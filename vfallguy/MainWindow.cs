@@ -21,9 +21,8 @@ public class MainWindow : Window, IDisposable
     private DateTime _autoJoinAt = DateTime.MaxValue;
     private DateTime _autoLeaveAt = DateTime.MaxValue;
     private int _numPlayersInDuty;
-
-    private static float _autoJoinDelay = 0.5f;
-    private static float _autoLeaveDelay = 3;
+    private float _autoJoinDelay = 0.5f;
+    private float _autoLeaveDelay = 3;
 
     public MainWindow() : base("vfailguy")
     {
@@ -107,8 +106,6 @@ public class MainWindow : Window, IDisposable
 
     public unsafe override void Draw()
     {
-        //ImGui.SetWindowFontScale(1.5f);
-
         if (ImGui.Button("Queue"))
             _automation.RegisterForDuty();
         ImGui.SameLine();
@@ -118,7 +115,17 @@ public class MainWindow : Window, IDisposable
         ImGui.TextUnformatted($"Num players in duty: {_numPlayersInDuty} (autoleave: {(_autoLeaveAt == DateTime.MaxValue ? "never" : $"in {(_autoLeaveAt - DateTime.Now).TotalSeconds:f1}s")})");
 
         ImGui.Checkbox("Auto register", ref  _autoJoin);
+        if (_autoJoin)
+        {
+            ImGui.SameLine();
+            ImGui.SliderFloat("Delay###j", ref _autoJoinDelay, 0, 10);
+        }
         ImGui.Checkbox("Auto leave if not solo", ref _autoLeaveIfNotSolo);
+        if (_autoLeaveIfNotSolo)
+        {
+            ImGui.SameLine();
+            ImGui.SliderFloat("Delay###l", ref _autoLeaveDelay, 0, 10);
+        }
 
         if (_map != null)
         {

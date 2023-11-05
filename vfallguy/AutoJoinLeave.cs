@@ -1,4 +1,5 @@
-﻿using FFXIVClientStructs.FFXIV.Client.Game.Control;
+﻿using Dalamud.Game.ClientState.Conditions;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -32,7 +33,10 @@ public unsafe class AutoJoinLeave : IDisposable
     {
         _actions.Add(() =>
         {
-            if (Service.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.BetweenAreas])
+            if (Service.Condition[ConditionFlag.BoundByDuty])
+                return true;
+
+            if (Service.Condition[ConditionFlag.BetweenAreas])
                 return false;
 
             var registrator = Service.ObjectTable.FirstOrDefault(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc && o.DataId == 0xFF7A8);
@@ -45,6 +49,9 @@ public unsafe class AutoJoinLeave : IDisposable
 
         _actions.Add(() =>
         {
+            if (Service.Condition[ConditionFlag.BoundByDuty])
+                return true;
+
             var addon = RaptureAtkUnitManager.Instance()->GetAddonByName("FGSEnterDialog");
             if (addon == null || !addon->IsVisible || addon->UldManager.LoadedState != AtkLoadState.Loaded)
                 return false;
@@ -58,6 +65,9 @@ public unsafe class AutoJoinLeave : IDisposable
 
         _actions.Add(() =>
         {
+            if (Service.Condition[ConditionFlag.BoundByDuty])
+                return true;
+
             var addon = RaptureAtkUnitManager.Instance()->GetAddonByName("ContentsFinderConfirm");
             if (addon == null || !addon->IsVisible || addon->UldManager.LoadedState != AtkLoadState.Loaded)
                 return false;
@@ -73,7 +83,7 @@ public unsafe class AutoJoinLeave : IDisposable
     public void LeaveDuty()
     {
         _actions.Add(() => {
-            if (!Service.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.BoundByDuty])
+            if (!Service.Condition[ConditionFlag.BoundByDuty])
                 return true;
             Service.Log.Info("leaving...");
             _abandonDuty(false);
@@ -81,9 +91,9 @@ public unsafe class AutoJoinLeave : IDisposable
         });
 
         _actions.Add(() => {
-            if (!Service.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.BoundByDuty])
+            if (!Service.Condition[ConditionFlag.BoundByDuty])
                 return true;
-            if (!Service.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.OccupiedInCutSceneEvent])
+            if (!Service.Condition[ConditionFlag.OccupiedInCutSceneEvent])
                 return false; // wait a bit for a cutscene to start...
             Service.Log.Info("leaving for real...");
             _abandonDuty(false);
