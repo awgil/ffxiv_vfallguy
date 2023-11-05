@@ -26,6 +26,7 @@ public class MainWindow : Window, IDisposable
     private int _numPlayersInDuty;
     private float _autoJoinDelay = 0.5f;
     private float _autoLeaveDelay = 3;
+    private int _autoLeaveLimit = 1;
 
     public MainWindow() : base("vfailguy")
     {
@@ -83,6 +84,8 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.SameLine();
             ImGui.SliderFloat("Delay###l", ref _autoLeaveDelay, 0, 10);
+            ImGui.SameLine();
+            ImGui.SliderInt("Limit", ref _autoLeaveLimit, 1, 23);
         }
 
         if (_map != null)
@@ -153,7 +156,7 @@ public class MainWindow : Window, IDisposable
         _numPlayersInDuty = Service.ClientState.TerritoryType == 1165 && Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas]
             ? Service.ObjectTable.Count(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
             : 0;
-        bool wantAutoLeave = _autoLeaveIfNotSolo && _numPlayersInDuty > 1 && _automation.Idle;
+        bool wantAutoLeave = _autoLeaveIfNotSolo && _numPlayersInDuty > _autoLeaveLimit && _automation.Idle;
         if (!wantAutoLeave)
         {
             _autoLeaveAt = DateTime.MaxValue;
