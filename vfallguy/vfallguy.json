@@ -4,5 +4,6 @@
   "Punchline": "Get that achievement!",
   "Description": "Bot that does fall guys event automatically.",
   "InternalName": "vfallguy",
-  "ApplicableVersion": "any"
+  "ApplicableVersion": "any",
+  "IconUrl": "https://raw.githubusercontent.com/awgil/ffxiv_vfallguy/3af43e6f7b7e63c6527ffa4ecc54190034bd60c4/icon2.png"
 }
