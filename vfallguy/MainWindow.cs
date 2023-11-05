@@ -48,12 +48,12 @@ public class MainWindow : Window, IDisposable
 
         _now = DateTime.Now;
         var playerPos = Service.ClientState.LocalPlayer?.Position ?? new();
-        _prevPos = playerPos;
         _movementDirection = playerPos - _prevPos;
+        _prevPos = playerPos;
         _movementSpeed = _movementDirection.Length() / Framework.Instance()->FrameDeltaTime;
         _movementDirection = _movementDirection.NormalizedXZ();
 
-        IsOpen = Service.ClientState.TerritoryType is 1165 or 1197 && !Service.Condition[ConditionFlag.BetweenAreas];
+        IsOpen = Service.ClientState.TerritoryType is 1165 or 1197;
 
         UpdateMap();
         UpdateAutoJoin();
@@ -105,6 +105,9 @@ public class MainWindow : Window, IDisposable
 
     private void UpdateMap()
     {
+        if (Service.Condition[ConditionFlag.BetweenAreas])
+            return;
+
         Type? mapType = null;
         if (IsOpen)
         {
@@ -176,7 +179,7 @@ public class MainWindow : Window, IDisposable
 
     private void DrawOverlays()
     {
-        if (_map == null)
+        if (_map == null || Service.Condition[ConditionFlag.BetweenAreas])
             return;
 
         var from = _map.PlayerPos;
@@ -195,19 +198,16 @@ public class MainWindow : Window, IDisposable
             var nextActivation = (aoe.NextActivation - _now).TotalSeconds;
             if (nextActivation < 2.5f)
             {
-                bool risky = false;
-                if (_movementSpeed > 0)
-                {
-                    var (aoeEnter, aoeExit) = aoe.Intersect(_map.PlayerPos, _movementDirection);
-                    if (!float.IsNaN(aoeEnter) && aoe.ActivatesBetween(_now, aoeEnter * Map.InvSpeed, aoeExit * Map.InvSpeed) is var delay && delay > 0)
-                        risky = true;
-                }
+                var (aoeEnter, aoeExit) = _movementSpeed > 0 ? aoe.Intersect(_map.PlayerPos, _movementDirection) : aoe.Contains(_map.PlayerPos) ? (0, float.PositiveInfinity) : (float.NaN, float.NaN);
+                var delay = !float.IsNaN(aoeEnter) ? aoe.ActivatesBetween(_now, aoeEnter * Map.InvSpeed, aoeExit * Map.InvSpeed) : 0;
+                var color = delay > 0 ? 0xff0000ff : 0xff00ffff;
+                var text = $"{nextActivation:f3} [{aoeEnter * Map.InvSpeed:f2}-{aoeExit * Map.InvSpeed:f2}, {delay:f2}]";
 
-                aoe.Draw(_drawer, risky ? 0xff0000ff : 0xff00ffff);
+                aoe.Draw(_drawer, color);
                 var dir = (aoe.Origin - _map.PlayerPos).NormalizedXZ();
                 var (enter, exit) = aoe.Intersect(_map.PlayerPos, dir);
                 var textPos = _map.PlayerPos + dir * MathF.Max(enter, 0);
-                _drawer.DrawWorldText(textPos, risky ? 0xff0000ff : 0xff00ffff, $"{nextActivation:f3}");
+                _drawer.DrawWorldText(textPos, color, text);
             }
         }
     }

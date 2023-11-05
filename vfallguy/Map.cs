@@ -191,6 +191,8 @@ public class Map : IDisposable
             var index = FindIndexInSequence(c, pos);
             if (index < 0)
                 continue;
+            if (AOEs[c.StartIndex].NextActivation == default)
+                Service.Log.Info($"Starting sequence @ {c.StartIndex} from {index}");
             if (activateIn > 0)
             {
                 c.NextIndex = index;
