@@ -12,7 +12,7 @@ https://puni.sh/api/repository/veyn
 2) Under Custom Plugin Repositories, enter ```https://puni.sh/api/repository/veyn``` into the empty box at the bottom
 3) Click the "+" button.
 4) Click the "Save and Close" button.
-5) You will now be able to find the plugin in your Plugin Installer
+5) You will now be able to find the plugin in your Plugin Installer and install it
 
 # Current list of features
 Automatically registers for the Fall Guys minigame 
