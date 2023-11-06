@@ -1,5 +1,6 @@
 # ffxiv_vfallguy dalamud plugin
 vFallguy dalamud plugin aims to make the Fall Guys Collaboration event in FFXIV less of a hassle
+
 Dalamud repository:
 ```
 https://puni.sh/api/repository/veyn
@@ -15,5 +16,7 @@ https://puni.sh/api/repository/veyn
 
 # Current list of features
 Automatically registers for the Fall Guys minigame 
+
 Automatically leaves the instance if you are not the only person in it (Useful for finding solo instances)
+
 Adds markers to showcase upcoming AoEs on stage 3 of the minigame
