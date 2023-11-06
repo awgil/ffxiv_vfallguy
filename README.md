@@ -19,4 +19,6 @@ Automatically registers for the Fall Guys minigame
 
 Automatically leaves the instance if you are not the only person in it (Useful for finding solo instances)
 
+Built-in button to leave the instance quickly (skips the confirmation button)
+
 Adds markers to showcase upcoming AoEs on stage 3 of the minigame
