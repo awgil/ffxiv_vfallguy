@@ -83,33 +83,33 @@ public class Map3 : Map
 
     private AOESequence CreateRotatingSequence(float repeat, float y, float z, params float[] x)
     {
-        return CreateSequence(AOEShape.Circle, 5, 0, x.Select(x => (new Vector3(x, y, z), repeat)));
+        return CreateSequence(AOEShape.Circle, 5, 0, x.Select(x => (new Vector3(x, y, z), 0.0f, repeat)));
     }
 
     private AOESequence CreateSingleExaflareSequence(float y, float z, params float[] x)
     {
-        return CreateSequence(AOEShape.Circle, 6, 0, x.Select(xx => (new Vector3(xx, y, z), xx == x.Last() ? 1.9f : 1.4f)));
+        return CreateSequence(AOEShape.Circle, 6, 0, x.Select(xx => (new Vector3(xx, y, z), 0.0f, xx == x.Last() ? 1.9f : 1.4f)));
     }
 
     private AOESequence CreateDoubleExaflareSequence(float y1, float z1, float y2, float z2)
     {
         float[] x = [-12, -4, 4, 12];
-        var l1 = x.Select(x => (new Vector3(x, y1, z1), 1.4f));
-        var l2 = x.Select(x => (new Vector3(x, y2, z2), 1.4f));
+        var l1 = x.Select(x => (new Vector3(x, y1, z1), 0.0f, 1.4f));
+        var l2 = x.Select(x => (new Vector3(x, y2, z2), 0.0f, 1.4f));
         return CreateSequence(AOEShape.Circle, 6, 0, l1.Concat(l2));
     }
 
     private AOESequence CreateRectsSequence(float x1, float x2)
     {
         (float y, float z, float d)[] l = [(25.59f, 190.4f, 0.5f), (23.37f, 196.4f, 0.5f), (21.15f, 202.4f, 0.5f), (18.94f, 208.4f, 0.5f), (16.73f, 214.4f, 1.1f)];
-        var l1 = l.Select(e => (new Vector3(x1, e.y, e.z), e.d));
-        var l2 = l.Select(e => (new Vector3(x2, e.y, e.z), e.d));
+        var l1 = l.Select(e => (new Vector3(x1, e.y, e.z), 0.0f, e.d));
+        var l2 = l.Select(e => (new Vector3(x2, e.y, e.z), 0.0f, e.d));
         return CreateSequence(AOEShape.Square, 3, 0, l1.Concat(l2));
     }
 
     private AOESequence CreatePairsSequence(float r, Vector3 p1, Vector3 p2)
     {
-        return CreateSequence(AOEShape.Circle, r, 0, [(p1, 2.5f), (p2, 2.5f)]);
+        return CreateSequence(AOEShape.Circle, r, 0, [(p1, 0.0f, 2.5f), (p2, 0.0f, 2.5f)]);
     }
 
     // step 1: from starting position to the beginning of the divider

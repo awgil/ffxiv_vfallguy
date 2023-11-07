@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace vfallguy;
@@ -58,6 +61,55 @@ public static class Geom
         return (Math.Max(enterX, enterZ), Math.Min(exitX, exitZ));
     }
 
+    public static (float, float) IntersectRayRect(Vector3 origin, float length, float halfWidth, float rot, Vector3 start, Vector3 dir)
+    {
+        var rd = new Vector3(MathF.Sin(rot), 0, MathF.Cos(rot));
+        var rn = new Vector3(rd.Z, 0, -rd.X);
+        var a = origin + halfWidth * rn;
+        var b = origin - halfWidth * rn;
+        var c = b + rd * length;
+        var d = a + rd * length;
+        var enter = float.NaN;
+        var exit = float.NaN;
+        foreach (var (p, q) in EnumerateEdges(a, b, c, d))
+        {
+            var t = IntersectRaySegment(p, q, start, dir);
+            if (t is >= 0 and <= 1)
+            {
+                var ed = q - p;
+                var en = new Vector3(ed.Z, 0, -ed.X);
+                var inter = p + ed * t;
+                var dist = (inter - start).LengthXZ();
+                bool startInside = en.DotXZ(start - p) > 0;
+                // note: rect is convex => max 1 enter and 1 exit
+                if (startInside)
+                    exit = dist;
+                else
+                    enter = dist;
+            }
+        }
+        return (enter, exit);
+    }
+
+    public static bool RectContains(Vector3 origin, float length, float halfWidth, float rot, Vector3 point)
+    {
+        var rd = new Vector3(MathF.Sin(rot), 0, MathF.Cos(rot));
+        var rn = new Vector3(rd.Z, 0, -rd.X);
+        var a = origin + halfWidth * rn;
+        var b = origin - halfWidth * rn;
+        var c = b + rd * length;
+        var d = a + rd * length;
+        foreach (var (p, q) in EnumerateEdges(a, b, c, d))
+        {
+            var ed = q - p;
+            var en = new Vector3(ed.Z, 0, -ed.X);
+            bool inside = en.DotXZ(point - p) > 0;
+            if (!inside)
+                return false;
+        }
+        return true;
+    }
+
     public static int CalculateCircleSegments(float radius, float angularLengthRad, float maxError)
     {
         // select max angle such that tesselation error is smaller than desired
@@ -66,5 +118,21 @@ public static class Geom
         int tessNumSegments = (int)MathF.Ceiling(angularLengthRad / tessAngle);
         tessNumSegments = (tessNumSegments + 1) & ~1; // round up to even for symmetry
         return Math.Clamp(tessNumSegments, 4, 512);
+    }
+
+    private static float IntersectRaySegment(Vector3 a, Vector3 b, Vector3 start, Vector3 dir)
+    {
+        var rayNormal = new Vector3(dir.Z, 0, -dir.X);
+        return rayNormal.DotXZ(start - a) / rayNormal.DotXZ(b - a);
+    }
+
+    private static IEnumerable<(Vector3, Vector3)> EnumerateEdges(params Vector3[] vertices)
+    {
+        var from = vertices.Last();
+        foreach (var v in vertices)
+        {
+            yield return (from, v);
+            from = v;
+        }
     }
 }

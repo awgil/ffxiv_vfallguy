@@ -114,6 +114,22 @@ public unsafe class DebugDrawer
         var b = center + new Vector3(-halfSide, 0, +halfSide);
         var c = center + new Vector3(+halfSide, 0, +halfSide);
         var d = center + new Vector3(+halfSide, 0, -halfSide);
+        return DrawWorldRect(a, b, c, d, color);
+    }
+
+    public bool DrawWorldRect(Vector3 origin, float length, float halfWidth, float rotation, uint color)
+    {
+        var rd = new Vector3(MathF.Sin(rotation), 0, MathF.Cos(rotation));
+        var rn = new Vector3(rd.Z, 0, -rd.X);
+        var a = origin + halfWidth * rn;
+        var b = origin - halfWidth * rn;
+        var c = b + rd * length;
+        var d = a + rd * length;
+        return DrawWorldRect(a, b, c, d, color);
+    }
+
+    public bool DrawWorldRect(Vector3 a, Vector3 b, Vector3 c, Vector3 d, uint color)
+    {
         DrawWorldLine(a, b, color);
         DrawWorldLine(b, c, color);
         DrawWorldLine(c, d, color);

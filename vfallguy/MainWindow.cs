@@ -118,8 +118,12 @@ public class MainWindow : Window, IDisposable
             else
             {
                 var pos = Service.ClientState.LocalPlayer!.Position;
-                if (pos.X is >= -40 and <= 40 && pos.Z is >= 100 and <= 350)
-                    mapType = typeof(Map3);
+                mapType = pos switch
+                {
+                    { X: >= -20 and <= 20, Z: >= -400 and <= -100 } => typeof(Map1A),
+                    { X: >= -40 and <= 40, Z: >= 100 and <= 350 } => typeof(Map3),
+                    _ => null
+                };
             }
         }
 
@@ -199,7 +203,7 @@ public class MainWindow : Window, IDisposable
             if (nextActivation < 2.5f)
             {
                 var (aoeEnter, aoeExit) = _movementSpeed > 0 ? aoe.Intersect(_map.PlayerPos, _movementDirection) : aoe.Contains(_map.PlayerPos) ? (0, float.PositiveInfinity) : (float.NaN, float.NaN);
-                var delay = !float.IsNaN(aoeEnter) ? aoe.ActivatesBetween(_now, aoeEnter * Map.InvSpeed, aoeExit * Map.InvSpeed) : 0;
+                var delay = !float.IsNaN(aoeEnter) ? aoe.ActivatesBetween(_now, aoeEnter * Map.InvSpeed - 0.1f, aoeExit * Map.InvSpeed + 0.1f) : 0;
                 var color = delay > 0 ? 0xff0000ff : 0xff00ffff;
                 var text = $"{nextActivation:f3} [{aoeEnter * Map.InvSpeed:f2}-{aoeExit * Map.InvSpeed:f2}, {delay:f2}]";
 

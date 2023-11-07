@@ -12,6 +12,7 @@ public class Map : IDisposable
         None, // uninitialized
         Circle, // r1 = radius, r2 = n/a
         Square, // r1 = half-side, r2 = n/a
+        Rect, // r1 = length from beginning (origin) to end along rotation, r2 = half-width
     }
 
     public class RepeatingAOE
@@ -19,6 +20,7 @@ public class Map : IDisposable
         public AOEShape Type;
         public float R1;
         public float R2;
+        public float Rotation;
         public Vector3 Origin;
         public float Repeat; // seconds between activations
         public float SeqDelay; // delay until next aoe in sequence
@@ -46,6 +48,7 @@ public class Map : IDisposable
         {
             AOEShape.Circle => Geom.IntersectRayCircle(Origin, R1, start, dir),
             AOEShape.Square => Geom.IntersectRaySquare(Origin, R1, start, dir),
+            AOEShape.Rect => Geom.IntersectRayRect(Origin, R1, R2, Rotation, start, dir),
             _ => (float.NaN, float.NaN)
         };
 
@@ -53,6 +56,7 @@ public class Map : IDisposable
         {
             AOEShape.Circle => (p - Origin).LengthXZSq() <= R1 * R1,
             AOEShape.Square => (p - Origin).MaxAbsCoordXZ() <= R1,
+            AOEShape.Rect => Geom.RectContains(Origin, R1, R2, Rotation, p),
             _ => false
         };
 
@@ -60,6 +64,7 @@ public class Map : IDisposable
         {
             AOEShape.Circle => d.DrawWorldCircle(Origin, R1, color),
             AOEShape.Square => d.DrawWorldSquare(Origin, R1, color),
+            AOEShape.Rect => d.DrawWorldRect(Origin, R1, R2, Rotation, color),
             _ => false
         };
     }
@@ -170,13 +175,13 @@ public class Map : IDisposable
     protected virtual void OnActionEffect(uint actionId, Vector3 casterPos) { }
     protected virtual void OnStartCast(uint actionId, Vector3 casterPos) { }
 
-    protected AOESequence CreateSequence(AOEShape type, float r1, float r2, IEnumerable<(Vector3 pos, float delay)> instances)
+    protected AOESequence CreateSequence(AOEShape type, float r1, float r2, IEnumerable<(Vector3 pos, float rot, float delay)> instances)
     {
         var startIndex = AOEs.Count;
         float repeat = 0;
-        foreach (var (p, d) in instances)
+        foreach (var (p, rot, d) in instances)
         {
-            AOEs.Add(new() { Type = type, R1 = r1, R2 = r2, Origin = p, SeqDelay = d });
+            AOEs.Add(new() { Type = type, R1 = r1, R2 = r2, Rotation = rot, Origin = p, SeqDelay = d });
             repeat += d;
         }
         foreach (var aoe in AOEs.Skip(startIndex))
@@ -184,7 +189,8 @@ public class Map : IDisposable
         return new() { StartIndex = startIndex, Count = AOEs.Count - startIndex };
     }
 
-    protected void UpdateSequence(Vector3 pos, float activateIn, params AOESequence[] candidates)
+    protected void UpdateSequence(Vector3 pos, float activateIn, params AOESequence[] candidates) => UpdateSequence(pos, activateIn, candidates);
+    protected void UpdateSequence(Vector3 pos, float activateIn, IEnumerable<AOESequence> candidates)
     {
         foreach (var c in candidates)
         {
