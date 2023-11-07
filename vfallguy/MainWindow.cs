@@ -120,7 +120,7 @@ public class MainWindow : Window, IDisposable
                 var pos = Service.ClientState.LocalPlayer!.Position;
                 mapType = pos switch
                 {
-                    { X: >= -20 and <= 20, Z: >= -400 and <= -100 } => typeof(Map1A),
+                    //{ X: >= -20 and <= 20, Z: >= -400 and <= -100 } => typeof(Map1A),
                     { X: >= -40 and <= 40, Z: >= 100 and <= 350 } => typeof(Map3),
                     _ => null
                 };
