@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace vfallguy;
 
@@ -26,6 +27,7 @@ public static class Geom
 
     public static Vector3 ClampX(Vector3 v, float min, float max) => new(Math.Clamp(v.X, min, max), v.Y, v.Z);
 
+    public static Vector2 XZ(this Vector3 v) => new(v.X, v.Z);
     public static float DotXZ(this Vector3 a, Vector3 b) => a.X * b.X + a.Z * b.Z;
     public static float LengthXZSq(this Vector3 v) => v.X * v.X + v.Z * v.Z;
     public static float LengthXZ(this Vector3 v) => MathF.Sqrt(v.LengthXZSq());
@@ -135,4 +137,7 @@ public static class Geom
             from = v;
         }
     }
+
+    public static ref T Ref<T>(this List<T> list, int index) => ref CollectionsMarshal.AsSpan(list)[index];
+    public static Span<T> AsSpan<T>(this List<T> list) => CollectionsMarshal.AsSpan(list);
 }

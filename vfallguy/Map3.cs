@@ -22,7 +22,94 @@ public class Map3 : Map
     private AOESequence _mech7PairL;
     private AOESequence _mech7PairR;
 
-    public Map3(GameEvents events) : base(events)
+    private static PathfindMap BuildBaseMap()
+    {
+        var map = new PathfindMap(0.5f, 0.25f, new(0, 0, 223), 14, 101, 60);
+
+        // columns at entrance
+        map.BlockPixelsInsideCircle(new(-4, 292), 1.5f, 0, 60, 100, 0);
+        map.BlockPixelsInsideCircle(new(+4, 292), 1.5f, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(-10, -3.3f, 285.5f, 293, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(+3.3f, +10, 285.5f, 293, 0, 60, 100, 0);
+
+        // central column
+        map.BlockPixelsInsideAlignedRect(-2, 2, 271, 278, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(-5.5f, 5.5f, 262.5f, 271, 0, 60, 100, 0);
+
+        // exaflare lane columns
+        map.BlockPixelsInsideAlignedRect(-9.5f, -5.5f, 247.5f, 256, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(-2.0f, +2.0f, 247.5f, 256, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(+5.5f, +9.5f, 247.5f, 256, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(-9.5f, -5.5f, 238.5f, 246.5f, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(-2.0f, +2.0f, 238.5f, 246.5f, 0, 60, 100, 0);
+        map.BlockPixelsInsideAlignedRect(+5.5f, +9.5f, 238.5f, 246.5f, 0, 60, 100, 0);
+
+        // rect lane prisms
+        BlockPrism(map, -9, 211, 4);
+        BlockPrism(map, +9, 211, 4);
+        BlockPrism(map, -2.5f, 202, 4);
+        BlockPrism(map, +2.5f, 202, 4);
+        BlockPrism(map, -9, 194, 4);
+        BlockPrism(map, +9, 194, 4);
+        BlockPrism(map, 0, 188, 4);
+
+        // stairs center
+        BlockTrapezium(map, 1.1f, 151.5f, 3.3f, 139);
+
+        // final corridor
+        BlockTrapezium(map, 4.3f, 133.5f, 8.5f, 123.7f);
+        BlockCorners(map, 14, 139, 7, 136, 13, 123);
+
+        return map;
+    }
+
+    private static void BlockPrism(PathfindMap m, float cx, float cy, float s)
+    {
+        var center = new Vector2(cx, cy);
+        var vs = new Vector2(s);
+        m.BlockPixelsInside(center - vs, center + vs, v => Math.Abs(v.X - cx) + Math.Abs(v.Y - cy) <= s, 0, 60, 100, 0);
+    }
+
+    private static void BlockTrapezium(PathfindMap m, float dx1, float y1, float dx2, float y2)
+    {
+        float coeff = (dx2 - dx1) / (y2 - y1);
+        float cons = dx1 - y1 * coeff;
+        m.BlockPixelsInside(new(-dx2, y2), new(dx2, y1), v => Math.Abs(v.X) < cons + coeff * v.Y, 0, 60, 100, 0);
+    }
+
+    private static void BlockCorners(PathfindMap m, float x1, float y1, float x2, float y2, float x3, float y3)
+    {
+        var a = new Vector2(x1, y1);
+        var b = new Vector2(x2, y2);
+        var c = new Vector2(x3, y3);
+        var ab = b - a;
+        var bc = c - b;
+        var n1 = new Vector2(ab.Y, -ab.X);
+        var n2 = new Vector2(bc.Y, -bc.X);
+        m.BlockPixelsInside(new(-x1, y3), new(x1, y1), v => Vector2.Dot(n1, new(Math.Abs(v.X) - x1, v.Y - y1)) < 0 && Vector2.Dot(n2, new(Math.Abs(v.X) - x2, v.Y - y2)) < 0, 0, 60, 100, 0);
+    }
+
+    private static List<(float z, float y)> _heightProfile = new()
+    {
+        (135.6f, 36.2f),
+        (139.0f, 35.5f),
+        (139.1f, 34.5f),
+        (143.0f, 34.3f),
+        (143.1f, 33.6f),
+        (147.0f, 33.4f),
+        (147.1f, 32.8f),
+        (150.9f, 32.5f),
+        (151.0f, 31.9f),
+        (180.7f, 28.8f),
+        (218.9f, 15.1f),
+        (229.7f, 14.5f),
+        (236.8f, 13.5f),
+        (262.9f, 6.0f),
+        (273.2f, 6.0f),
+        (286.9f, 3.2f),
+    };
+
+    public Map3(GameEvents events) : base(events, BuildBaseMap(), _heightProfile, 130)
     {
         _mech1Rotating = CreateRotatingSequence(1.2f, 6, 267.5f, [-10, 10]);
         _mech2Exaflares = CreateDoubleExaflareSequence(9.39f, 251, 11.75f, 243);

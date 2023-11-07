@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace vfallguy;
 
@@ -67,6 +68,14 @@ public class Map : IDisposable
             AOEShape.Rect => d.DrawWorldRect(Origin, R1, R2, Rotation, color),
             _ => false
         };
+
+        public bool Rasterize(PathfindMap m, DateTime now, float leeway) => NextActivation != default ? Type switch
+        {
+            AOEShape.Circle => m.BlockPixelsInsideCircle(Origin.XZ(), R1, (float)(NextActivation - now).TotalSeconds, 0.1f, Repeat, leeway),
+            AOEShape.Square => m.BlockPixelsInsideSquare(Origin.XZ(), R1, (float)(NextActivation - now).TotalSeconds, 0.1f, Repeat, leeway),
+            AOEShape.Rect => false, // TODO: implement
+            _ => false
+        } : false;
     }
 
     public class AOESequence
@@ -136,14 +145,21 @@ public class Map : IDisposable
     public const float InvSpeed = 1.0f / Speed;
 
     public GameEvents Events;
+    public PathfindMap BaseMap;
+    public List<(float z, float y)> HeightProfile;
+    public float GoalZ;
     public List<RepeatingAOE> AOEs = new();
-    public bool PathDirty = true;
+    public Task<List<Waypoint>>? PathTask;
     public List<Waypoint> Path = new();
     public Vector3 PlayerPos;
+    public float AOELeeway = 0.2f;
 
-    public Map(GameEvents events)
+    public Map(GameEvents events, PathfindMap baseMap, List<(float z, float y)> heightProfile, float goalZ)
     {
         Events = events;
+        BaseMap = baseMap;
+        HeightProfile = heightProfile;
+        GoalZ = goalZ;
         events.ActionEffectEvent += OnActionEffect;
         events.StartCastEvent += OnStartCast;
     }
@@ -156,19 +172,47 @@ public class Map : IDisposable
 
     public void Update()
     {
-        PlayerPos = Service.ClientState.LocalPlayer!.Position;
-        if (PathDirty)
+        try
         {
-            var t = DateTime.Now;
-            Path = RebuildPath(PlayerPos, DateTime.Now);
-            PathDirty = false;
-            Service.Log.Info($"Path rebuilt: took {(DateTime.Now - t).TotalMilliseconds:f3}ms, len={Path.Count}");
+            PlayerPos = Service.ClientState.LocalPlayer!.Position;
+            if (PathTask?.IsCompleted ?? false)
+            {
+                Path = PathTask.Result;
+                PathTask = null;
+            }
+            if (PathTask == null)
+            {
+                var mapWithAOEs = BaseMap.Clone();
+                var now = DateTime.Now;
+                foreach (var aoe in AOEs)
+                {
+                    aoe.Rasterize(mapWithAOEs, now, AOELeeway);
+                }
+                PathTask = Task.Run(() => BuildWaypointsTask(mapWithAOEs));
+            }
         }
-        else
+        catch (Exception ex)
         {
-            while (Path.Count > 0 && PlayerPos.Z < Path[0].Dest.Z)
-                Path.RemoveAt(0);
+            Service.Log.Error($"start task: {ex}");
         }
+
+        while (Path.Count > 0 && PlayerPos.Z < Path[0].Dest.Z) // TODO: better condition
+            Path.RemoveAt(0);
+    }
+
+    public float HeightAt(float z)
+    {
+        if (HeightProfile.Count == 0)
+            return 0;
+        var idx = HeightProfile.FindIndex(p => p.z > z);
+        if (idx == 0)
+            return HeightProfile[0].y;
+        else if (idx < 0)
+            return HeightProfile.Last().y;
+
+        var p1 = HeightProfile[idx - 1];
+        var p2 = HeightProfile[idx];
+        return p1.y + (z - p1.z) / (p2.z - p1.z) * (p2.y - p1.y);
     }
 
     protected virtual List<Waypoint> RebuildPath(Vector3 startPos, DateTime startTime) => new();
@@ -189,7 +233,7 @@ public class Map : IDisposable
         return new() { StartIndex = startIndex, Count = AOEs.Count - startIndex };
     }
 
-    protected void UpdateSequence(Vector3 pos, float activateIn, params AOESequence[] candidates) => UpdateSequence(pos, activateIn, candidates);
+    protected void UpdateSequence(Vector3 pos, float activateIn, params AOESequence[] candidates) => UpdateSequence(pos, activateIn, candidates.AsEnumerable());
     protected void UpdateSequence(Vector3 pos, float activateIn, IEnumerable<AOESequence> candidates)
     {
         foreach (var c in candidates)
@@ -221,7 +265,7 @@ public class Map : IDisposable
                     aoe.NextActivation = t;
                 }
             }
-            PathDirty = true;
+            //PathDirty = true;
             return;
         }
         Service.Log.Error($"Failed to find AOE at {pos}");
@@ -236,4 +280,45 @@ public class Map : IDisposable
     }
 
     protected RepeatingAOE SequenceAOE(AOESequence seq, int index) => AOEs[seq.StartIndex + index];
+
+    private List<Waypoint> BuildWaypointsTask(PathfindMap mapWithAOEs)
+    {
+        try
+        {
+            return BuildWaypoints(new PathfindFloodFill(mapWithAOEs, Speed, PlayerPos).SolveUntilZ(GoalZ));
+        }
+        catch (Exception ex)
+        {
+            Service.Log.Error($"exec task: {ex}");
+            return new();
+        }
+    }
+
+    private List<Waypoint> BuildWaypoints(IEnumerable<(int x, int y, int t)> pts)
+    {
+        var res = new List<Waypoint>();
+        Vector2 prevDir = new();
+        foreach (var (x, y, _) in pts)
+        {
+            var p = BaseMap.GridToWorld(x, y, 0.5f, 0.5f);
+            if (res.Count > 0)
+            {
+                var dir = (p - res.Last().Dest).NormalizedXZ().XZ();
+                if (Vector2.Dot(dir, prevDir) > 0.95f)
+                    res.Ref(res.Count - 1).Dest = p;
+                else
+                    res.Add(new() { Dest = p });
+            }
+            else
+            {
+                res.Add(new() { Dest = p }); // first point
+            }
+        }
+        foreach (ref var w in res.AsSpan())
+        {
+            w.Dest.Y = HeightAt(w.Dest.Z);
+        }
+        res.Reverse();
+        return res;
+    }
 }
