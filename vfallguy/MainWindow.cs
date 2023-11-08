@@ -123,7 +123,7 @@ public class MainWindow : Window, IDisposable
         {
             if (Service.ClientState.TerritoryType == 1197)
             {
-                mapType = typeof(MapTest);
+                //mapType = typeof(MapTest);
             }
             else
             {
