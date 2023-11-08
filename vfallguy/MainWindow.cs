@@ -12,6 +12,7 @@ namespace vfallguy;
 public class MainWindow : Window, IDisposable
 {
     private GameEvents _gameEvents = new();
+    private OverrideMovement _overrideMovement = new();
     private DebugDrawer _drawer = new();
     private AutoJoinLeave _automation = new();
     private Map? _map;
@@ -21,6 +22,7 @@ public class MainWindow : Window, IDisposable
     private float _movementSpeed;
     private bool _autoJoin;
     private bool _autoLeaveIfNotSolo;
+    private bool _autoRun;
     private DateTime _autoJoinAt = DateTime.MaxValue;
     private DateTime _autoLeaveAt = DateTime.MaxValue;
     private int _numPlayersInDuty;
@@ -61,6 +63,10 @@ public class MainWindow : Window, IDisposable
         DrawOverlays();
 
         _drawer.DrawWorldPrimitives();
+
+        _overrideMovement.Enabled = _autoRun && _map != null && _map.PathSkip < _map.Path.Count;
+        if (_overrideMovement.Enabled)
+            _overrideMovement.DesiredPosition = _map!.Path[_map.PathSkip].Dest;
     }
 
     public unsafe override void Draw()
@@ -76,17 +82,21 @@ public class MainWindow : Window, IDisposable
         ImGui.Checkbox("Auto register", ref  _autoJoin);
         if (_autoJoin)
         {
-            ImGui.SameLine();
-            ImGui.SliderFloat("Delay###j", ref _autoJoinDelay, 0, 10);
+            using (ImRaii.PushIndent())
+            {
+                ImGui.SliderFloat("Delay###j", ref _autoJoinDelay, 0, 10);
+            }
         }
         ImGui.Checkbox("Auto leave if not solo", ref _autoLeaveIfNotSolo);
         if (_autoLeaveIfNotSolo)
         {
-            ImGui.SameLine();
-            ImGui.SliderFloat("Delay###l", ref _autoLeaveDelay, 0, 10);
-            ImGui.SameLine();
-            ImGui.SliderInt("Limit", ref _autoLeaveLimit, 1, 23);
+            using (ImRaii.PushIndent())
+            {
+                ImGui.SliderFloat("Delay###l", ref _autoLeaveDelay, 0, 10);
+                ImGui.SliderInt("Limit", ref _autoLeaveLimit, 1, 23);
+            }
         }
+        ImGui.Checkbox("Auto run", ref _autoRun);
 
         if (_map != null)
         {
@@ -113,7 +123,7 @@ public class MainWindow : Window, IDisposable
         {
             if (Service.ClientState.TerritoryType == 1197)
             {
-                //mapType = typeof(MapTest);
+                mapType = typeof(MapTest);
             }
             else
             {
