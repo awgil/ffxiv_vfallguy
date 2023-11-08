@@ -91,7 +91,7 @@ public class MainWindow : Window, IDisposable
         if (_map != null)
         {
             ImGui.TextUnformatted($"Pos: {_map.PlayerPos}");
-            ImGui.TextUnformatted($"Path: {_map.Path.Count}");
+            ImGui.TextUnformatted($"Path: {_map.PathSkip}-{_map.Path.Count}");
             ImGui.TextUnformatted($"Speed: {_movementSpeed}");
 
             foreach (var aoe in _map.AOEs.Where(aoe => aoe.NextActivation != default))
@@ -187,7 +187,7 @@ public class MainWindow : Window, IDisposable
             return;
 
         var from = _map.PlayerPos;
-        for (int i = 0; i < _map.Path.Count; ++i)
+        for (int i = _map.PathSkip; i < _map.Path.Count; ++i)
         {
             var wp = _map.Path[i];
             var delay = (wp.StartMoveAt - _now).TotalSeconds;

@@ -120,4 +120,67 @@ public class PathfindMap
     {
         return BlockPixelsInsideAlignedRect(center.X - halfSide, center.X + halfSide, center.Y - halfSide, center.Y + halfSide, tStart, tDuration, tRepeat, tLeeway);
     }
+
+    // enumerate pixels along line starting from (x1, y1) to (x2, y2); first is not returned, last is returned
+    public IEnumerable<(int x, int y)> EnumeratePixelsInLine(int x1, int y1, int x2, int y2)
+    {
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+        int sx = dx > 0 ? 1 : -1;
+        int sy = dy > 0 ? 1 : -1;
+        dx = Math.Abs(dx);
+        dy = Math.Abs(dy);
+        if (dx >= dy)
+        {
+            int err = 2 * dy - dx;
+            do
+            {
+                x1 += sx;
+                yield return (x1, y1);
+                if (err > 0)
+                {
+                    y1 += sy;
+                    yield return (x1, y1);
+                    err -= 2 * dx;
+                }
+                err += 2 * dy;
+            }
+            while (x1 != x2);
+        }
+        else
+        {
+            int err = 2 * dx - dy;
+            do
+            {
+                y1 += sy;
+                yield return (x1, y1);
+                if (err > 0)
+                {
+                    x1 += sx;
+                    yield return (x1, y1);
+                    err -= 2 * dy;
+                }
+                err += 2 * dx;
+            }
+            while (y1 != y2);
+        }
+    }
+
+    public bool StraightLineAllowed(int x0, int y0, int t0, int x1, int y1, float invSpeed)
+    {
+        if (x0 == x1 && y0 == y1)
+            return true;
+        Service.Log.Info($"SLA: {x0}x{y0}@{t0} to {x1}x{y1} with {invSpeed}");
+        foreach (var (x, y) in EnumeratePixelsInLine(x0, y0, x1, y1))
+        {
+            var dx = x - x0;
+            var dy = y - y0;
+            var dist = Math.Sqrt(dx * dx + dy * dy) * SpaceResolution;
+            var dt = dist * invSpeed * InvTimeResolution;
+            var t = (int)(t0 + dt);
+            if (this[x, y, t] || this[x, y, t + 1])
+                return false;
+        }
+        return true;
+    }
 }

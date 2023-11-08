@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Lumina.Excel.GeneratedSheets;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -151,6 +152,7 @@ public class Map : IDisposable
     public List<RepeatingAOE> AOEs = new();
     public Task<List<Waypoint>>? PathTask;
     public List<Waypoint> Path = new();
+    public int PathSkip;
     public Vector3 PlayerPos;
     public float AOELeeway = 0.2f;
 
@@ -178,6 +180,7 @@ public class Map : IDisposable
             if (PathTask?.IsCompleted ?? false)
             {
                 Path = PathTask.Result;
+                PathSkip = 0;
                 PathTask = null;
             }
             if (PathTask == null)
@@ -188,7 +191,7 @@ public class Map : IDisposable
                 {
                     aoe.Rasterize(mapWithAOEs, now, AOELeeway);
                 }
-                PathTask = Task.Run(() => BuildWaypointsTask(mapWithAOEs));
+                PathTask = Task.Run(() => BuildWaypointsTask(mapWithAOEs, now, PlayerPos));
             }
         }
         catch (Exception ex)
@@ -196,8 +199,8 @@ public class Map : IDisposable
             Service.Log.Error($"start task: {ex}");
         }
 
-        while (Path.Count > 0 && PlayerPos.Z < Path[0].Dest.Z) // TODO: better condition
-            Path.RemoveAt(0);
+        while (Path.Count > PathSkip && PlayerPos.Z < Path[PathSkip].Dest.Z) // TODO: better condition
+            ++PathSkip;
     }
 
     public float HeightAt(float z)
@@ -281,44 +284,53 @@ public class Map : IDisposable
 
     protected RepeatingAOE SequenceAOE(AOESequence seq, int index) => AOEs[seq.StartIndex + index];
 
-    private List<Waypoint> BuildWaypointsTask(PathfindMap mapWithAOEs)
+    private List<Waypoint> BuildWaypointsTask(PathfindMap mapWithAOEs, DateTime now, Vector3 playerPos)
     {
         try
         {
-            return BuildWaypoints(new PathfindFloodFill(mapWithAOEs, Speed, PlayerPos).SolveUntilZ(GoalZ));
+            var pathfind = new PathfindFloodFill(mapWithAOEs, Speed, playerPos);
+            var solution = pathfind.SolveUntilZ(GoalZ).ToList();
+            Service.Log.Info($"Solution: starts from {solution.Count} points");
+            if (solution.Count == 0)
+                return new();
+
+            solution.Reverse();
+            // remove useless points from solution
+            var prev = solution[0];
+            for (int i = 1; i < solution.Count - 1; ++i)
+            {
+                var curr = solution[i];
+                var next = solution[i + 1];
+                if (curr.y - prev.y == next.y - curr.y && curr.x - prev.x == next.x - curr.x)
+                {
+                    solution.RemoveAt(i);
+                    --i;
+                }
+                prev = curr;
+            }
+            Service.Log.Info($"Solution: after culling straight lines has {solution.Count} points");
+
+            // see whether we can straighten initial path
+            var gp = mapWithAOEs.WorldToGrid(playerPos);
+            var invSpeed = 1.0f / Speed;
+            var firstNontrivial = solution.FindIndex(p => !mapWithAOEs.StraightLineAllowed(gp.x, gp.y, 0, p.x, p.y, invSpeed));
+            Service.Log.Info($"Solution: first nontrivial point is {firstNontrivial}");
+
+            var res = new List<Waypoint>();
+            int prevT = 0;
+            foreach (var (x, y, t) in solution.Skip(firstNontrivial > 0 ? firstNontrivial - 1 : 0))
+            {
+                var p = BaseMap.GridToWorld(x, y, 0.5f, 0.5f);
+                p.Y = HeightAt(p.Z);
+                var wait = res.Count > 0 ? (t - prevT) * mapWithAOEs.TimeResolution - (p - res.Last().Dest).LengthXZ() * InvSpeed : 0;
+                res.Add(new() { Dest = p, StartMoveAt = wait > 0 ? now.AddSeconds(wait) : default });
+            }
+            return res;
         }
         catch (Exception ex)
         {
             Service.Log.Error($"exec task: {ex}");
             return new();
         }
-    }
-
-    private List<Waypoint> BuildWaypoints(IEnumerable<(int x, int y, int t)> pts)
-    {
-        var res = new List<Waypoint>();
-        Vector2 prevDir = new();
-        foreach (var (x, y, _) in pts)
-        {
-            var p = BaseMap.GridToWorld(x, y, 0.5f, 0.5f);
-            if (res.Count > 0)
-            {
-                var dir = (p - res.Last().Dest).NormalizedXZ().XZ();
-                if (Vector2.Dot(dir, prevDir) > 0.95f)
-                    res.Ref(res.Count - 1).Dest = p;
-                else
-                    res.Add(new() { Dest = p });
-            }
-            else
-            {
-                res.Add(new() { Dest = p }); // first point
-            }
-        }
-        foreach (ref var w in res.AsSpan())
-        {
-            w.Dest.Y = HeightAt(w.Dest.Z);
-        }
-        res.Reverse();
-        return res;
     }
 }
