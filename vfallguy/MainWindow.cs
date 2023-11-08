@@ -23,6 +23,9 @@ public class MainWindow : Window, IDisposable
     private bool _autoJoin;
     private bool _autoLeaveIfNotSolo;
     private bool _autoRun;
+    private bool _showAOEs;
+    private bool _showAOEText;
+    private bool _showPathfind;
     private DateTime _autoJoinAt = DateTime.MaxValue;
     private DateTime _autoLeaveAt = DateTime.MaxValue;
     private int _numPlayersInDuty;
@@ -96,7 +99,10 @@ public class MainWindow : Window, IDisposable
                 ImGui.SliderInt("Limit", ref _autoLeaveLimit, 1, 23);
             }
         }
-        ImGui.Checkbox("Auto run", ref _autoRun);
+        ImGui.Checkbox("Auto run (experimental!!)", ref _autoRun);
+        ImGui.Checkbox("Show AOE zones", ref _showAOEs);
+        ImGui.Checkbox("Show AOE debug text", ref _showAOEText);
+        ImGui.Checkbox("Show proposed path", ref _showPathfind);
 
         if (_map != null)
         {
@@ -196,15 +202,18 @@ public class MainWindow : Window, IDisposable
         if (_map == null || Service.Condition[ConditionFlag.BetweenAreas])
             return;
 
-        var from = _map.PlayerPos;
-        for (int i = _map.PathSkip; i < _map.Path.Count; ++i)
+        if (_showPathfind)
         {
-            var wp = _map.Path[i];
-            var delay = (wp.StartMoveAt - _now).TotalSeconds;
-            _drawer.DrawWorldLine(from, wp.Dest, i > 0 ? 0xff00ffff : delay <= 0 ? 0xff00ff00 : 0xff0000ff);
-            if (delay > 0)
-                _drawer.DrawWorldText(from, 0xff0000ff, $"{delay:f3}");
-            from = wp.Dest;
+            var from = _map.PlayerPos;
+            for (int i = _map.PathSkip; i < _map.Path.Count; ++i)
+            {
+                var wp = _map.Path[i];
+                var delay = (wp.StartMoveAt - _now).TotalSeconds;
+                _drawer.DrawWorldLine(from, wp.Dest, i > 0 ? 0xff00ffff : delay <= 0 ? 0xff00ff00 : 0xff0000ff);
+                if (delay > 0)
+                    _drawer.DrawWorldText(from, 0xff0000ff, $"{delay:f3}");
+                from = wp.Dest;
+            }
         }
 
         foreach (var aoe in _map.AOEs.Where(aoe => aoe.NextActivation != default))
@@ -215,13 +224,18 @@ public class MainWindow : Window, IDisposable
                 var (aoeEnter, aoeExit) = _movementSpeed > 0 ? aoe.Intersect(_map.PlayerPos, _movementDirection) : aoe.Contains(_map.PlayerPos) ? (0, float.PositiveInfinity) : (float.NaN, float.NaN);
                 var delay = !float.IsNaN(aoeEnter) ? aoe.ActivatesBetween(_now, aoeEnter * Map.InvSpeed - 0.1f, aoeExit * Map.InvSpeed + 0.1f) : 0;
                 var color = delay > 0 ? 0xff0000ff : 0xff00ffff;
-                var text = $"{nextActivation:f3} [{aoeEnter * Map.InvSpeed:f2}-{aoeExit * Map.InvSpeed:f2}, {delay:f2}]";
-
-                aoe.Draw(_drawer, color);
-                var dir = (aoe.Origin - _map.PlayerPos).NormalizedXZ();
-                var (enter, exit) = aoe.Intersect(_map.PlayerPos, dir);
-                var textPos = _map.PlayerPos + dir * MathF.Max(enter, 0);
-                _drawer.DrawWorldText(textPos, color, text);
+                if (_showAOEs)
+                {
+                    aoe.Draw(_drawer, color);
+                }
+                if (_showAOEText)
+                {
+                    var text = $"{nextActivation:f3} [{aoeEnter * Map.InvSpeed:f2}-{aoeExit * Map.InvSpeed:f2}, {delay:f2}]";
+                    var dir = (aoe.Origin - _map.PlayerPos).NormalizedXZ();
+                    var (enter, exit) = aoe.Intersect(_map.PlayerPos, dir);
+                    var textPos = _map.PlayerPos + dir * MathF.Max(enter, 0);
+                    _drawer.DrawWorldText(textPos, color, text);
+                }
             }
         }
     }
