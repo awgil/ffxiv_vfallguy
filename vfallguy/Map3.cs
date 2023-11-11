@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FFXIVClientStructs.FFXIV.Application.Network.WorkDefinitions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -13,6 +14,7 @@ public class Map3 : Map
     private AOESequence _mech3Exaflares;
     private AOESequence _mech4RectsL;
     private AOESequence _mech4RectsR;
+    private AOESequence _mech4RectsC;
     private AOESequence _mech4Exaflare;
     private AOESequence _mech5PairL1;
     private AOESequence _mech5PairL2;
@@ -109,7 +111,7 @@ public class Map3 : Map
         (286.9f, 3.2f),
     };
 
-    public Map3(GameEvents events) : base(events, BuildBaseMap(), _heightProfile, 130)
+    public Map3(GameEvents events) : base(events, BuildBaseMap(), _heightProfile, 123)
     {
         _mech1Rotating = CreateRotatingSequence(1.2f, 6, 267.5f, [-10, 10]);
         _mech2Exaflares = CreateDoubleExaflareSequence(9.39f, 251, 11.75f, 243);
@@ -117,6 +119,7 @@ public class Map3 : Map
         _mech3Exaflares = CreateDoubleExaflareSequence(14.54f, 229.3f, 14.97f, 221.3f);
         _mech4RectsL = CreateRectsSequence(-12, -6);
         _mech4RectsR = CreateRectsSequence(12, 6);
+        _mech4RectsC = CreateRectsSequenceCenter();
         _mech4Exaflare = CreateSingleExaflareSequence(22.52f, 198.7f, [-12, -4, 4, 12]);
         _mech5PairL1 = CreatePairsSequence(5, new(-10, 29.95f, 170), new(-2, 29.95f, 170));
         _mech5PairL2 = CreatePairsSequence(5, new(-10, 31.39f, 156), new(-4.34f, 30.81f, 161.66f));
@@ -130,13 +133,107 @@ public class Map3 : Map
         //    Service.Log.Info($"aoe: {a.Type} r={a.R1} @ {a.Origin}");
     }
 
+    public override string Strats()
+    {
+        if (_mech2Exaflares.FirstIndex < 0 || _mech3Exaflares.FirstIndex < 0 || _mech4RectsL.FirstIndex < 0 || _mech4Exaflare.FirstIndex < 0)
+            return "";
+
+        bool mech3Left = _mech3Exaflares.FirstIndex is 1 or 2 or 3 or 6 or 7;
+        var lane1 = _mech2Exaflares.FirstIndex switch
+        {
+            0 or 4 => mech3Left ? 1 : 4,
+            1 or 5 => mech3Left ? 1 : 2,
+            2 or 6 => mech3Left ? 2 : 3,
+            3 or 7 => mech3Left ? 3 : 4,
+            _ => 0
+        };
+        bool initialLeft = lane1 <= 2;
+        // by the time we reach bottom of the ramp with rects, the full cycle should end - so if it started from outside, we'll be at '2'
+        bool mech4InnerRectsWhenReached = _mech4RectsL.FirstIndex < 5;
+        var lane2 = (_mech4Exaflare.FirstIndex + (mech4InnerRectsWhenReached ? 0 : 1)) % 4 + 1;
+        return $"{(initialLeft ? "L" : "R")} -> {lane1} -> {(mech3Left ? "L" : "R")} -> {lane2} [{(mech4InnerRectsWhenReached ? "inner" : "outer")}, {_mech2Exaflares.FirstIndex % 4 + 1} {_mech3Exaflares.FirstIndex % 4 + 1} {_mech4Exaflare.FirstIndex % 4 + 1}]";
+    }
+
     protected override List<Waypoint> RebuildPath(Vector3 startPos, DateTime startTime)
     {
-        return new();
-        //var p = new PathBuilder(startPos, startTime, "");
-        //var end = Pathfind1(p);
-        //Service.Log.Info($"Final path length: {(end - startTime).TotalSeconds}s");
-        //return p.Waypoints;
+        if (_mech2Exaflares.FirstIndex < 0 || _mech3Exaflares.FirstIndex < 0 || _mech4RectsL.FirstIndex < 0 || _mech4Exaflare.FirstIndex < 0)
+            return new();
+
+        bool mech3Left = _mech3Exaflares.FirstIndex is 1 or 2 or 3 or 6 or 7;
+        var lane1 = _mech2Exaflares.FirstIndex switch
+        {
+            0 or 4 => mech3Left ? 1 : 4,
+            1 or 5 => mech3Left ? 1 : 2,
+            2 or 6 => mech3Left ? 2 : 3,
+            3 or 7 => mech3Left ? 3 : 4,
+            _ => 0
+        };
+        bool initialLeft = lane1 <= 2;
+        // by the time we reach bottom of the ramp with rects, the full cycle should end - so if it started from outside, we'll be at '2'
+        bool mech4InnerRectsWhenReached = _mech4RectsL.FirstIndex < 5;
+        var lane2 = (_mech4Exaflare.FirstIndex + (mech4InnerRectsWhenReached ? 0 : 1)) % 4 + 1;
+
+        var res = new List<Waypoint>();
+        void MoveTo(float x, float z) => res.Add(new() { Dest = new(x, HeightAt(z), z) });
+
+        // TODO: first portal
+        MoveTo(initialLeft ? -5.5f : 5.5f, 270.5f);
+        MoveTo(initialLeft ? -5.5f : 5.5f, 263.5f);
+        var lane1X = lane1 switch
+        {
+            1 => -9.5f,
+            2 => -5.5f,
+            3 => +5.5f,
+            4 => +9.5f,
+            _ => 0
+        };
+        MoveTo(lane1X, 255.5f);
+        var lane1EndX = lane1 switch
+        {
+            2 => mech3Left ? -5.5f : -2f,
+            3 => mech3Left ? +2f : +5.5f,
+            _ => lane1X
+        };
+        MoveTo(lane1EndX, 238.5f);
+        MoveTo(mech3Left ? -5 : +5, 225.3f);
+
+        if (mech4InnerRectsWhenReached)
+        {
+            MoveTo(lane2 <= 2 ? -6 : +6, 203.5f);
+        }
+        else
+        {
+            var lowX = lane2 switch
+            {
+                1 => mech3Left ? - 12 : 0,
+                4 => mech3Left ? 0 : 12,
+                _ => 0,
+            };
+            MoveTo(lowX, 212);
+            MoveTo(lowX, 208);
+
+            var midX = lane2 switch
+            {
+                1 => -12,
+                2 => -6,
+                3 => 6,
+                4 => 12,
+                _ => 0,
+            };
+            MoveTo(midX, 203);
+        }
+
+        var lane2X = lane2 switch
+        {
+            1 => -12,
+            2 => -5,
+            3 => 5,
+            4 => 12,
+            _ => 0,
+        };
+        MoveTo(lane2X, 145.5f);
+
+        return res;
     }
 
     protected override void OnActionEffect(uint actionId, Vector3 casterPos)
@@ -151,7 +248,7 @@ public class Map3 : Map
                 break;
             case 34804:
             case 34812:
-                UpdateSequence(casterPos, 0, _mech4RectsL, _mech4RectsR);
+                UpdateSequence(casterPos, 0, _mech4RectsL, _mech4RectsR, _mech4RectsC);
                 break;
             case 34796:
                 UpdateSequence(casterPos, 0, _mech5PairL1, _mech5PairL2, _mech5PairR1, _mech5PairR2);
@@ -192,6 +289,13 @@ public class Map3 : Map
         var l1 = l.Select(e => (new Vector3(x1, e.y, e.z), 0.0f, e.d));
         var l2 = l.Select(e => (new Vector3(x2, e.y, e.z), 0.0f, e.d));
         return CreateSequence(AOEShape.Square, 3, 0, l1.Concat(l2));
+    }
+
+    private AOESequence CreateRectsSequenceCenter()
+    {
+        (float y, float z, float d)[] l = [(25.59f, 190.4f, 0.5f), (23.37f, 196.4f, 0.5f), (21.15f, 202.4f, 0.5f), (18.94f, 208.4f, 0.5f), (16.73f, 214.4f, 4.2f)];
+        var l1 = l.Select(e => (new Vector3(0, e.y, e.z), 0.0f, e.d));
+        return CreateSequence(AOEShape.Square, 3, 0, l1);
     }
 
     private AOESequence CreatePairsSequence(float r, Vector3 p1, Vector3 p2)

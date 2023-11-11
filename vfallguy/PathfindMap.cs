@@ -43,7 +43,7 @@ public class PathfindMap
     }
 
     public int ClampX(int x) => Math.Clamp(x, 0, Width - 1);
-    public int ClampZ(int z) => Math.Clamp(z, 0, Height - 1);
+    public int ClampY(int y) => Math.Clamp(y, 0, Height - 1);
     public int ClampT(int t) => Math.Clamp(t, 0, Duration - 1);
 
     public Vector2 WorldToGridFrac(Vector3 world) => new Vector2(Width / 2, Height / 2) + (world.XZ() - Center) * InvSpaceResolution;
@@ -76,8 +76,8 @@ public class PathfindMap
         var relMax = boundsMax - Center;
         var xmin = ClampX(Width / 2 + (int)MathF.Floor(relMin.X * InvSpaceResolution));
         var xmax = ClampX(Width / 2 + (int)MathF.Ceiling(relMax.X * InvSpaceResolution));
-        var ymin = ClampZ(Height / 2 + (int)MathF.Floor(relMin.Y * InvSpaceResolution));
-        var ymax = ClampZ(Height / 2 + (int)MathF.Ceiling(relMax.Y * InvSpaceResolution));
+        var ymin = ClampY(Height / 2 + (int)MathF.Floor(relMin.Y * InvSpaceResolution));
+        var ymax = ClampY(Height / 2 + (int)MathF.Ceiling(relMax.Y * InvSpaceResolution));
 
         var tOff = Width * Height;
         var cy = Center + new Vector2(xmin - Width / 2 + 0.5f, ymin - Height / 2 + 0.5f) * SpaceResolution;
@@ -170,7 +170,6 @@ public class PathfindMap
     {
         if (x0 == x1 && y0 == y1)
             return true;
-        Service.Log.Info($"SLA: {x0}x{y0}@{t0} to {x1}x{y1} with {invSpeed}");
         foreach (var (x, y) in EnumeratePixelsInLine(x0, y0, x1, y1))
         {
             var dx = x - x0;
@@ -178,7 +177,7 @@ public class PathfindMap
             var dist = Math.Sqrt(dx * dx + dy * dy) * SpaceResolution;
             var dt = dist * invSpeed * InvTimeResolution;
             var t = (int)(t0 + dt);
-            if (this[x, y, t] || this[x, y, t + 1])
+            if (this[x, y, t] && this[x, y, t + 1])
                 return false;
         }
         return true;

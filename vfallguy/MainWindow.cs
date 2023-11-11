@@ -106,16 +106,19 @@ public class MainWindow : Window, IDisposable
 
         if (_map != null)
         {
+            var strats = _map.Strats();
+            if (strats.Length > 0)
+                ImGui.TextUnformatted(strats);
             ImGui.TextUnformatted($"Pos: {_map.PlayerPos}");
             ImGui.TextUnformatted($"Path: {_map.PathSkip}-{_map.Path.Count}");
             ImGui.TextUnformatted($"Speed: {_movementSpeed}");
 
-            foreach (var aoe in _map.AOEs.Where(aoe => aoe.NextActivation != default))
-            {
-                var nextActivation = (aoe.NextActivation - _now).TotalSeconds;
-                using (ImRaii.PushColor(ImGuiCol.Text, nextActivation < 0 ? 0xff0000ff : 0xffffffff))
-                    ImGui.TextUnformatted($"{aoe.Type} R{aoe.R1} @ {aoe.Origin}: activate in {nextActivation:f3}, repeat={aoe.Repeat}, seqd={aoe.SeqDelay}");
-            }
+            //foreach (var aoe in _map.AOEs.Where(aoe => aoe.NextActivation != default))
+            //{
+            //    var nextActivation = (aoe.NextActivation - _now).TotalSeconds;
+            //    using (ImRaii.PushColor(ImGuiCol.Text, nextActivation < 0 ? 0xff0000ff : 0xffffffff))
+            //        ImGui.TextUnformatted($"{aoe.Type} R{aoe.R1} @ {aoe.Origin}: activate in {nextActivation:f3}, repeat={aoe.Repeat}, seqd={aoe.SeqDelay}");
+            //}
         }
     }
 
