@@ -56,7 +56,7 @@ public unsafe class AutoJoinLeave : IDisposable
             if (addon == null || !addon->IsVisible || addon->UldManager.LoadedState != AtkLoadState.Loaded)
                 return false;
 
-            Service.Log.Info($"registering...");
+            Service.Log.Debug($"registering...");
             var eventData = new AtkEvent();
             var inputData = stackalloc int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             addon->ReceiveEvent(AtkEventType.ButtonClick, 0, &eventData, (nint)inputData);
@@ -72,7 +72,7 @@ public unsafe class AutoJoinLeave : IDisposable
             if (addon == null || !addon->IsVisible || addon->UldManager.LoadedState != AtkLoadState.Loaded)
                 return false;
 
-            Service.Log.Info($"commencing...");
+            Service.Log.Debug($"commencing...");
             var eventData = new AtkEvent();
             var inputData = stackalloc int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             addon->ReceiveEvent(AtkEventType.ButtonClick, 8, &eventData, (nint)inputData);
@@ -85,7 +85,7 @@ public unsafe class AutoJoinLeave : IDisposable
         _actions.Add(() => {
             if (!Service.Condition[ConditionFlag.BoundByDuty])
                 return true;
-            Service.Log.Info("leaving...");
+            Service.Log.Debug("leaving...");
             _abandonDuty(false);
             return true;
         });
@@ -95,7 +95,7 @@ public unsafe class AutoJoinLeave : IDisposable
                 return true;
             if (!Service.Condition[ConditionFlag.OccupiedInCutSceneEvent])
                 return false; // wait a bit for a cutscene to start...
-            Service.Log.Info("leaving for real...");
+            Service.Log.Debug("leaving for real...");
             _abandonDuty(false);
             return true;
         });

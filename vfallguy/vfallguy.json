@@ -2,7 +2,7 @@
   "Author": "veyn",
   "Name": "vfallguy",
   "Punchline": "Get that achievement!",
-  "Description": "Bot that does fall guys event automatically.",
+  "Description": "Auto join/leave to try fishing for solo instance, highlight of aoes on last stage.",
   "InternalName": "vfallguy",
   "ApplicableVersion": "any",
   "IconUrl": "https://raw.githubusercontent.com/awgil/ffxiv_vfallguy/3af43e6f7b7e63c6527ffa4ecc54190034bd60c4/icon2.png"

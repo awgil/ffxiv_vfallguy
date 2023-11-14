@@ -12,7 +12,6 @@ namespace vfallguy;
 public class MainWindow : Window, IDisposable
 {
     private GameEvents _gameEvents = new();
-    private OverrideMovement _overrideMovement = new();
     private DebugDrawer _drawer = new();
     private AutoJoinLeave _automation = new();
     private Map? _map;
@@ -22,7 +21,6 @@ public class MainWindow : Window, IDisposable
     private float _movementSpeed;
     private bool _autoJoin;
     private bool _autoLeaveIfNotSolo;
-    private bool _autoRun;
     private bool _showAOEs;
     private bool _showAOEText;
     private bool _showPathfind;
@@ -66,10 +64,6 @@ public class MainWindow : Window, IDisposable
         DrawOverlays();
 
         _drawer.DrawWorldPrimitives();
-
-        _overrideMovement.Enabled = _autoRun && _map != null && _map.PathSkip < _map.Path.Count;
-        if (_overrideMovement.Enabled)
-            _overrideMovement.DesiredPosition = _map!.Path[_map.PathSkip].Dest;
     }
 
     public unsafe override void Draw()
@@ -99,7 +93,6 @@ public class MainWindow : Window, IDisposable
                 ImGui.SliderInt("Limit", ref _autoLeaveLimit, 1, 23);
             }
         }
-        ImGui.Checkbox("Auto run (experimental!!)", ref _autoRun);
         ImGui.Checkbox("Show AOE zones", ref _showAOEs);
         ImGui.Checkbox("Show AOE debug text", ref _showAOEText);
         ImGui.Checkbox("Show proposed path", ref _showPathfind);
@@ -166,12 +159,12 @@ public class MainWindow : Window, IDisposable
         }
         else if (_autoJoinAt == DateTime.MaxValue)
         {
-            Service.Log.Info($"Auto-joining in {_autoJoinDelay:f2}s...");
+            Service.Log.Debug($"Auto-joining in {_autoJoinDelay:f2}s...");
             _autoJoinAt = _now.AddSeconds(_autoJoinDelay);
         }
         else if (_now >= _autoJoinAt)
         {
-            Service.Log.Info($"Auto-joining");
+            Service.Log.Debug($"Auto-joining");
             _automation.RegisterForDuty();
             _autoJoinAt = DateTime.MaxValue;
         }
@@ -189,12 +182,12 @@ public class MainWindow : Window, IDisposable
         }
         else if (_autoLeaveAt == DateTime.MaxValue)
         {
-            Service.Log.Info($"Auto-leaving in {_autoLeaveDelay:f2}s...");
+            Service.Log.Debug($"Auto-leaving in {_autoLeaveDelay:f2}s...");
             _autoLeaveAt = _now.AddSeconds(_autoLeaveDelay);
         }
         else if (_now >= _autoLeaveAt)
         {
-            Service.Log.Info($"Auto-leaving: {_numPlayersInDuty} players");
+            Service.Log.Debug($"Auto-leaving: {_numPlayersInDuty} players");
             _automation.LeaveDuty();
             _autoLeaveAt = DateTime.MaxValue;
         }

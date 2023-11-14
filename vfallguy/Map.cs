@@ -1,7 +1,5 @@
-﻿using Lumina.Excel.GeneratedSheets;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -114,7 +112,7 @@ public class Map : IDisposable
         public float MoveTo(Vector3 pos, bool jump = false)
         {
             var dt = (pos - StartPos).LengthXZ() * InvSpeed;
-            Service.Log.Info($"MoveTo {DebugName}: {StartPos}->{pos} with delay {NextDelay:f3}, will take {dt:f3}");
+            Service.Log.Debug($"MoveTo {DebugName}: {StartPos}->{pos} with delay {NextDelay:f3}, will take {dt:f3}");
             Waypoints.Add(new() { Dest = pos, StartMoveAt = NextDelay > 0 ? StartTime.AddSeconds(NextDelay) : default, Jump = jump });
             StartTime = StartTime.AddSeconds(NextDelay + dt);
             StartPos = pos;
@@ -276,7 +274,6 @@ public class Map : IDisposable
                     aoe.NextActivation = t;
                 }
             }
-            //PathDirty = true;
             return;
         }
         Service.Log.Error($"Failed to find AOE at {pos}");
@@ -291,54 +288,4 @@ public class Map : IDisposable
     }
 
     protected RepeatingAOE SequenceAOE(AOESequence seq, int index) => AOEs[seq.StartIndex + index];
-
-    private List<Waypoint> BuildWaypointsTask(PathfindMap mapWithAOEs, DateTime now, Vector3 playerPos)
-    {
-        try
-        {
-            var res = new List<Waypoint>();
-            var p = mapWithAOEs.WorldToGrid(playerPos);
-            var t = 0;
-            var ey = mapWithAOEs.WorldToGrid(new(0, 0, GoalZ)).y;
-            while (p.y > ey)
-            {
-                var pathfind = new PathfindFloodFill(mapWithAOEs, Speed, p.x, p.y, t);
-                var solution = pathfind.SolveUntilY(ey).ToList();
-                Service.Log.Info($"Solution: starts from {solution.Count} points");
-                solution.Reverse();
-                var firstMoveIndex = solution.FindIndex(v => (v.x, v.y) != p);
-                if (firstMoveIndex <= 0)
-                    break;
-
-                var firstStep = solution[firstMoveIndex];
-                float wait = 0;
-                while (mapWithAOEs[firstStep.x, firstStep.y, t])
-                {
-                    ++t;
-                    wait += mapWithAOEs.TimeResolution;
-                }
-
-                var firstUnreachable = firstMoveIndex + 1 < solution.Count ? solution.FindIndex(firstMoveIndex + 1, v => !mapWithAOEs.StraightLineAllowed(p.x, p.y, t, v.x, v.y, InvSpeed)) : -1;
-                var next = solution[firstUnreachable > 0 ? firstUnreachable - 1 : solution.Count - 1];
-                var dx = next.x - p.x;
-                var dy = next.y - p.y;
-                if (dx == 0 && dy == 0)
-                    break;
-                var dest = mapWithAOEs.GridToWorld(next.x, next.y, 0, 0);
-                dest.Y = HeightAt(dest.Z);
-                res.Add(new() { Dest = dest, StartMoveAt = wait > 0 ? now.AddSeconds(t * mapWithAOEs.InvTimeResolution) : default });
-
-                var dist = MathF.Sqrt(dx * dx + dy * dy) * mapWithAOEs.SpaceResolution;
-                var dt = dist * InvSpeed * mapWithAOEs.InvTimeResolution;
-                p = (next.x, next.y);
-                t += (int)MathF.Ceiling(dt);
-            }
-            return res;
-        }
-        catch (Exception ex)
-        {
-            Service.Log.Error($"exec task: {ex}");
-            return new();
-        }
-    }
 }
