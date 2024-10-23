@@ -2,6 +2,7 @@
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.Interop;
 using System;
@@ -58,8 +59,8 @@ public unsafe class AutoJoinLeave : IDisposable
 
             Service.Log.Debug($"registering...");
             var eventData = new AtkEvent();
-            var inputData = stackalloc int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            addon->ReceiveEvent(AtkEventType.ButtonClick, 0, &eventData, (nint)inputData);
+            var inputData = new AtkEventData();
+            addon->ReceiveEvent(AtkEventType.ButtonClick, 0, &eventData, &inputData);
             return true;
         });
 
@@ -74,8 +75,8 @@ public unsafe class AutoJoinLeave : IDisposable
 
             Service.Log.Debug($"commencing...");
             var eventData = new AtkEvent();
-            var inputData = stackalloc int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            addon->ReceiveEvent(AtkEventType.ButtonClick, 8, &eventData, (nint)inputData);
+            var inputData = new AtkEventData();
+            addon->ReceiveEvent(AtkEventType.ButtonClick, 8, &eventData, &inputData);
             return true;
         });
     }
