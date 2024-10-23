@@ -1,46 +1,50 @@
 ﻿using Dalamud.Interface.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace vfallguy;
 
 public unsafe class DebugDrawer
 {
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate IntPtr GetMatrixSingletonDelegate();
-
-    private GetMatrixSingletonDelegate _getMatrixSingleton { get; init; }
-
-    public SharpDX.Matrix ViewProj { get; private set; }
-    public SharpDX.Matrix Proj { get; private set; }
-    public SharpDX.Matrix View { get; private set; }
-    public SharpDX.Matrix CameraWorld { get; private set; }
-    public float CameraAzimuth { get; private set; } // facing north = 0, facing west = pi/4, facing south = +-pi/2, facing east = -pi/4
-    public float CameraAltitude { get; private set; } // facing horizontally = 0, facing down = pi/4, facing up = -pi/4
-    public SharpDX.Vector2 ViewportSize { get; private set; }
+    public Vector3 Origin;
+    public Matrix4x4 View;
+    public Matrix4x4 Proj;
+    public Matrix4x4 ViewProj;
+    public Vector4 NearPlane;
+    public float CameraAzimuth; // facing north = 0, facing west = pi/4, facing south = +-pi/2, facing east = -pi/4
+    public float CameraAltitude; // facing horizontally = 0, facing down = pi/4, facing up = -pi/4
+    public Vector2 ViewportSize;
 
     private List<(Vector2 from, Vector2 to, uint col)> _worldDrawLines = new();
     private List<(Vector2 pos, uint col, string text)> _worldText = new();
 
-    public DebugDrawer()
-    {
-        var funcAddress = Service.SigScanner.ScanText("E8 ?? ?? ?? ?? 48 8D 4C 24 ?? 48 89 4c 24 ?? 4C 8D 4D ?? 4C 8D 44 24 ??");
-        _getMatrixSingleton = Marshal.GetDelegateForFunctionPointer<GetMatrixSingletonDelegate>(funcAddress);
-    }
-
     public void Update()
     {
-        var matrixSingleton = _getMatrixSingleton();
-        ViewProj = ReadMatrix(matrixSingleton + 0x1b4);
-        Proj = ReadMatrix(matrixSingleton + 0x174);
-        View = ViewProj * SharpDX.Matrix.Invert(Proj);
-        CameraWorld = SharpDX.Matrix.Invert(View);
-        CameraAzimuth = MathF.Atan2(View.Column3.X, View.Column3.Z);
-        CameraAltitude = MathF.Asin(View.Column3.Y);
-        ViewportSize = ReadVec2(matrixSingleton + 0x1f4);
+        var controlCamera = CameraManager.Instance()->GetActiveCamera();
+        var renderCamera = controlCamera != null ? controlCamera->SceneCamera.RenderCamera : null;
+        if (renderCamera == null)
+            return;
+
+        Origin = renderCamera->Origin;
+        View = renderCamera->ViewMatrix;
+        View.M44 = 1; // for whatever reason, game doesn't initialize it...
+        Proj = renderCamera->ProjectionMatrix;
+        ViewProj = View * Proj;
+
+        // note that game uses reverse-z by default, so we can't just get full plane equation by reading column 3 of vp matrix
+        // so just calculate it manually: column 3 of view matrix is plane equation for a plane equation going through origin
+        // proof:
+        // plane equation p is such that p.dot(Q, 1) = 0 if Q lines on the plane => pw = -Q.dot(n); for view matrix, V43 is -origin.dot(forward)
+        // plane equation for near plane has Q.dot(n) = O.dot(n) - near => pw = V43 + near
+        NearPlane = new(View.M13, View.M23, View.M33, View.M43 + renderCamera->NearPlane);
+
+        CameraAzimuth = MathF.Atan2(View.M13, View.M33);
+        CameraAltitude = MathF.Asin(View.M23);
+        var device = FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.Device.Instance();
+        ViewportSize = new(device->Width, device->Height);
     }
 
     public void DrawWorldPrimitives()
@@ -69,27 +73,29 @@ public unsafe class DebugDrawer
 
     public void DrawWorldLine(Vector3 start, Vector3 end, uint color)
     {
-        var p1 = new SharpDX.Vector3(start.X, start.Y, start.Z);
-        var p2 = new SharpDX.Vector3(end.X, end.Y, end.Z);
-        if (!ClipLineToNearPlane(ref p1, ref p2))
+        var p1w = start;
+        var p2w = end;
+        if (!ClipLineToNearPlane(ref p1w, ref p2w))
             return;
 
-        p1 = SharpDX.Vector3.TransformCoordinate(p1, ViewProj);
-        p2 = SharpDX.Vector3.TransformCoordinate(p2, ViewProj);
-        var p1screen = new Vector2(0.5f * ViewportSize.X * (1 + p1.X), 0.5f * ViewportSize.Y * (1 - p1.Y)) + ImGuiHelpers.MainViewport.Pos;
-        var p2screen = new Vector2(0.5f * ViewportSize.X * (1 + p2.X), 0.5f * ViewportSize.Y * (1 - p2.Y)) + ImGuiHelpers.MainViewport.Pos;
+        var p1p = Vector4.Transform(p1w, ViewProj);
+        var p2p = Vector4.Transform(p2w, ViewProj);
+        var p1c = new Vector2(p1p.X, p1p.Y) * (1 / p1p.W);
+        var p2c = new Vector2(p2p.X, p2p.Y) * (1 / p2p.W);
+        var p1screen = new Vector2(0.5f * ViewportSize.X * (1 + p1c.X), 0.5f * ViewportSize.Y * (1 - p1c.Y)) + ImGuiHelpers.MainViewport.Pos;
+        var p2screen = new Vector2(0.5f * ViewportSize.X * (1 + p2c.X), 0.5f * ViewportSize.Y * (1 - p2c.Y)) + ImGuiHelpers.MainViewport.Pos;
         _worldDrawLines.Add((p1screen, p2screen, color));
     }
 
     public void DrawWorldText(Vector3 pos, uint color, string text)
     {
-        var p = new SharpDX.Vector3(pos.X, pos.Y, pos.Z);
-        var n = ViewProj.Column3; // near plane
-        if (SharpDX.Vector4.Dot(new(p, 1), n) <= 0)
+        var pn = Vector4.Dot(new(pos, 1), NearPlane);
+        if (pn >= 0)
             return;
 
-        p = SharpDX.Vector3.TransformCoordinate(p, ViewProj);
-        var pscreen = new Vector2(0.5f * ViewportSize.X * (1 + p.X), 0.5f * ViewportSize.Y * (1 - p.Y)) + ImGuiHelpers.MainViewport.Pos;
+        var pp = Vector4.Transform(pos, ViewProj);
+        var pc = new Vector2(pp.X, pp.Y) * (1 / pp.W);
+        var pscreen = new Vector2(0.5f * ViewportSize.X * (1 + pc.X), 0.5f * ViewportSize.Y * (1 - pc.Y)) + ImGuiHelpers.MainViewport.Pos;
         _worldText.Add((pscreen, color, text));
     }
 
@@ -137,38 +143,23 @@ public unsafe class DebugDrawer
         return true;
     }
 
-    private unsafe SharpDX.Matrix ReadMatrix(IntPtr address)
+    private bool ClipLineToNearPlane(ref Vector3 a, ref Vector3 b)
     {
-        var p = (float*)address;
-        SharpDX.Matrix mtx = new();
-        for (var i = 0; i < 16; i++)
-            mtx[i] = *p++;
-        return mtx;
-    }
+        var an = Vector4.Dot(new(a, 1), NearPlane);
+        var bn = Vector4.Dot(new(b, 1), NearPlane);
+        if (an >= 0 && bn >= 0)
+            return false; // line fully behind near plane
 
-    private unsafe SharpDX.Vector2 ReadVec2(IntPtr address)
-    {
-        var p = (float*)address;
-        return new(p[0], p[1]);
-    }
-
-    private bool ClipLineToNearPlane(ref SharpDX.Vector3 a, ref SharpDX.Vector3 b)
-    {
-        var n = ViewProj.Column3; // near plane
-        var an = SharpDX.Vector4.Dot(new(a, 1), n);
-        var bn = SharpDX.Vector4.Dot(new(b, 1), n);
-        if (an <= 0 && bn <= 0)
-            return false;
-
-        if (an < 0 || bn < 0)
+        if (an > 0 || bn > 0)
         {
             var ab = b - a;
-            var abn = SharpDX.Vector3.Dot(ab, new(n.X, n.Y, n.Z));
+            var abn = Vector3.Dot(ab, new(NearPlane.X, NearPlane.Y, NearPlane.Z));
             var t = -an / abn;
-            if (an < 0)
-                a = a + t * ab;
+            var p = a + t * ab;
+            if (an > 0)
+                a = p;
             else
-                b = a + t * ab;
+                b = p;
         }
         return true;
     }

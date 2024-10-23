@@ -21,7 +21,7 @@ public unsafe class AutoJoinLeave : IDisposable
 
     public AutoJoinLeave()
     {
-        _abandonDuty = Marshal.GetDelegateForFunctionPointer<AbandonDuty>(Service.SigScanner.ScanText("E8 ?? ?? ?? ?? 48 8B 43 28 B1 01"));
+        _abandonDuty = Marshal.GetDelegateForFunctionPointer<AbandonDuty>(Service.SigScanner.ScanText("E8 ?? ?? ?? ?? 41 B2 01 EB 39"));
     }
 
     public void Dispose()
