@@ -1,5 +1,6 @@
 ﻿using Dalamud.Game.ClientState.Conditions;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -8,25 +9,14 @@ using FFXIVClientStructs.Interop;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace vfallguy;
 
 public unsafe class AutoJoinLeave : IDisposable
 {
-    private delegate void AbandonDuty(bool a1);
-    private AbandonDuty _abandonDuty;
+    private List<Func<bool>> _actions = [];
 
-    private List<Func<bool>> _actions = new();
-
-    public AutoJoinLeave()
-    {
-        _abandonDuty = Marshal.GetDelegateForFunctionPointer<AbandonDuty>(Service.SigScanner.ScanText("E8 ?? ?? ?? ?? 41 B2 01 EB 39"));
-    }
-
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
     public bool Idle => _actions.Count == 0;
 
@@ -40,7 +30,7 @@ public unsafe class AutoJoinLeave : IDisposable
             if (Service.Condition[ConditionFlag.BetweenAreas])
                 return false;
 
-            var registrator = Service.ObjectTable.FirstOrDefault(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc && o.DataId == 0xFF7A8);
+            var registrator = Service.ObjectTable.FirstOrDefault(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc && o.BaseId == 0xFF7A8);
             if (registrator == null)
                 return false;
 
@@ -87,7 +77,7 @@ public unsafe class AutoJoinLeave : IDisposable
             if (!Service.Condition[ConditionFlag.BoundByDuty])
                 return true;
             Service.Log.Debug("leaving...");
-            _abandonDuty(false);
+            EventFramework.LeaveCurrentContent(false);
             return true;
         });
 
@@ -97,7 +87,7 @@ public unsafe class AutoJoinLeave : IDisposable
             if (!Service.Condition[ConditionFlag.OccupiedInCutSceneEvent])
                 return false; // wait a bit for a cutscene to start...
             Service.Log.Debug("leaving for real...");
-            _abandonDuty(false);
+            EventFramework.LeaveCurrentContent(false);
             return true;
         });
     }

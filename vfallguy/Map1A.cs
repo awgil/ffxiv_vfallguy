@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-
-namespace vfallguy;
+﻿namespace vfallguy;
 
 //public class Map1A : Map
 //{

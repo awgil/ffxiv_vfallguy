@@ -1,11 +1,11 @@
-﻿using Dalamud.Game.ClientState.Conditions;
+﻿using System;
+using System.Linq;
+using System.Numerics;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
-using ImGuiNET;
-using System;
-using System.Linq;
-using System.Numerics;
 
 namespace vfallguy;
 
@@ -76,7 +76,7 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextUnformatted($"Num players in duty: {_numPlayersInDuty} (autoleave: {(_autoLeaveAt == DateTime.MaxValue ? "never" : $"in {(_autoLeaveAt - _now).TotalSeconds:f1}s")})");
 
-        ImGui.Checkbox("Auto register", ref  _autoJoin);
+        ImGui.Checkbox("Auto register", ref _autoJoin);
         if (_autoJoin)
         {
             using (ImRaii.PushIndent())

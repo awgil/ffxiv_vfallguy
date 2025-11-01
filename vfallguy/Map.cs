@@ -93,20 +93,13 @@ public class Map : IDisposable
         public bool Jump;
     }
 
-    public class PathBuilder
+    public class PathBuilder(Vector3 p, DateTime t, string debugName)
     {
-        public string DebugName;
-        public List<Waypoint> Waypoints = new();
-        public Vector3 StartPos;
-        public DateTime StartTime;
+        public string DebugName = debugName;
+        public List<Waypoint> Waypoints = [];
+        public Vector3 StartPos = p;
+        public DateTime StartTime = t;
         public float NextDelay;
-
-        public PathBuilder(Vector3 p, DateTime t, string debugName)
-        {
-            DebugName = debugName;
-            StartPos = p;
-            StartTime = t;
-        }
 
         // returns time taken by movement
         public float MoveTo(Vector3 pos, bool jump = false)
@@ -149,9 +142,9 @@ public class Map : IDisposable
     public PathfindMap BaseMap;
     public List<(float z, float y)> HeightProfile;
     public float GoalZ;
-    public List<RepeatingAOE> AOEs = new();
+    public List<RepeatingAOE> AOEs = [];
     public Task<List<Waypoint>>? PathTask;
-    public List<Waypoint> Path = new();
+    public List<Waypoint> Path = [];
     public int PathSkip;
     public Vector3 PlayerPos;
     public float AOELeeway = 0.5f;
@@ -221,7 +214,7 @@ public class Map : IDisposable
     }
 
     public virtual string Strats() => "";
-    protected virtual List<Waypoint> RebuildPath(Vector3 startPos, DateTime startTime) => new();
+    protected virtual List<Waypoint> RebuildPath(Vector3 startPos, DateTime startTime) => [];
     protected virtual void OnActionEffect(uint actionId, Vector3 casterPos) { }
     protected virtual void OnStartCast(uint actionId, Vector3 casterPos) { }
 

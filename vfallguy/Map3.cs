@@ -1,5 +1,4 @@
-﻿using FFXIVClientStructs.FFXIV.Application.Network.WorkDefinitions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -91,8 +90,8 @@ public class Map3 : Map
         m.BlockPixelsInside(new(-x1, y3), new(x1, y1), v => Vector2.Dot(n1, new(Math.Abs(v.X) - x1, v.Y - y1)) < 0 && Vector2.Dot(n2, new(Math.Abs(v.X) - x2, v.Y - y2)) < 0, 0, 60, 100, 0);
     }
 
-    private static List<(float z, float y)> _heightProfile = new()
-    {
+    private static List<(float z, float y)> _heightProfile =
+    [
         (135.6f, 36.2f),
         (139.0f, 35.5f),
         (139.1f, 34.5f),
@@ -109,7 +108,7 @@ public class Map3 : Map
         (262.9f, 6.0f),
         (273.2f, 6.0f),
         (286.9f, 3.2f),
-    };
+    ];
 
     public Map3(GameEvents events) : base(events, BuildBaseMap(), _heightProfile, 123)
     {
@@ -157,7 +156,7 @@ public class Map3 : Map
     protected override List<Waypoint> RebuildPath(Vector3 startPos, DateTime startTime)
     {
         if (_mech2Exaflares.FirstIndex < 0 || _mech3Exaflares.FirstIndex < 0 || _mech4RectsL.FirstIndex < 0 || _mech4Exaflare.FirstIndex < 0)
-            return new();
+            return [];
 
         bool mech3Left = _mech3Exaflares.FirstIndex is 1 or 2 or 3 or 6 or 7;
         var lane1 = _mech2Exaflares.FirstIndex switch

@@ -38,11 +38,11 @@ public unsafe class GameEvents : IDisposable
     public event StartCastEventDelegate? StartCastEvent;
 
     private delegate void ProcessActionEffectPacketDelegate(uint casterId, Character* casterObj, Vector3* targetPos, ActionEffectHeader* header, ulong* effects, ulong* targets);
-    [Signature("40 55 56 57 41 54 41 55 41 56 48 8D AC 24")]
+    [Signature("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ??")]
     private Hook<ProcessActionEffectPacketDelegate> _processActionEffectPacketHook = null!;
 
     private delegate void StartCastDelegate(Character* self, ActionType actionType, uint actionId, ushort* intPos, float rot, float castTime);
-    [Signature("E8 ?? ?? ?? ?? 80 7D 20 11")]
+    [Signature("E8 ?? ?? ?? ?? 80 7E 22 11")]
     private Hook<StartCastDelegate> _startCastHook = null!;
 
     public GameEvents()

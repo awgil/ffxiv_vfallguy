@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Numerics;
 
 namespace vfallguy;
 
 public class MapTest : Map
 {
-    public MapTest(GameEvents events) : base(events, new(0.5f, 0.25f, new(0, 0, -20), 20, 20, 60), new(), -30)
+    public MapTest(GameEvents events) : base(events, new(0.5f, 0.25f, new(0, 0, -20), 20, 20, 60), [], -30)
     {
         AOEs.Add(new() { Type = AOEShape.Circle, Origin = new(0, 0, -20), R1 = 5, NextActivation = DateTime.Now.AddSeconds(5), Repeat = 2.5f });
     }

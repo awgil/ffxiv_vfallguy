@@ -1,6 +1,6 @@
-﻿using Dalamud.Interface.Utility;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -18,8 +18,8 @@ public unsafe class DebugDrawer
     public float CameraAltitude; // facing horizontally = 0, facing down = pi/4, facing up = -pi/4
     public Vector2 ViewportSize;
 
-    private List<(Vector2 from, Vector2 to, uint col)> _worldDrawLines = new();
-    private List<(Vector2 pos, uint col, string text)> _worldText = new();
+    private List<(Vector2 from, Vector2 to, uint col)> _worldDrawLines = [];
+    private List<(Vector2 pos, uint col, string text)> _worldText = [];
 
     public void Update()
     {
