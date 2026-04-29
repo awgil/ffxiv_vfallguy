@@ -50,7 +50,7 @@ public class MainWindow : Window, IDisposable
         _drawer.Update();
 
         _now = DateTime.Now;
-        var playerPos = Service.ClientState.LocalPlayer?.Position ?? new();
+        var playerPos = Service.ObjectTable.LocalPlayer?.Position ?? new();
         _movementDirection = playerPos - _prevPos;
         _prevPos = playerPos;
         _movementSpeed = _movementDirection.Length() / Framework.Instance()->FrameDeltaTime;
@@ -129,7 +129,7 @@ public class MainWindow : Window, IDisposable
             }
             else
             {
-                var pos = Service.ClientState.LocalPlayer!.Position;
+                var pos = Service.ObjectTable.LocalPlayer!.Position;
                 mapType = pos switch
                 {
                     //{ X: >= -20 and <= 20, Z: >= -400 and <= -100 } => typeof(Map1A),
@@ -173,7 +173,7 @@ public class MainWindow : Window, IDisposable
     private void UpdateAutoLeave()
     {
         _numPlayersInDuty = Service.ClientState.TerritoryType == 1165 && Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas]
-            ? Service.ObjectTable.Count(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
+            ? Service.ObjectTable.Count(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc)
             : 0;
         bool wantAutoLeave = _autoLeaveIfNotSolo && _numPlayersInDuty > _autoLeaveLimit && _automation.Idle;
         if (!wantAutoLeave)

@@ -169,7 +169,7 @@ public class Map : IDisposable
     {
         try
         {
-            PlayerPos = Service.ClientState.LocalPlayer!.Position;
+            PlayerPos = Service.ObjectTable.LocalPlayer!.Position;
             //if (PathTask?.IsCompleted ?? false)
             //{
             //    Path = PathTask.Result;
