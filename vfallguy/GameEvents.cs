@@ -1,10 +1,12 @@
-﻿using Dalamud.Hooking;
+﻿using System;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using Dalamud.Hooking;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using System;
-using System.Numerics;
-using System.Runtime.InteropServices;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Sound;
 
 namespace vfallguy;
 
@@ -37,22 +39,21 @@ public unsafe class GameEvents : IDisposable
     public delegate void StartCastEventDelegate(uint actionId, Vector3 casterPos);
     public event StartCastEventDelegate? StartCastEvent;
 
-    private delegate void ProcessActionEffectPacketDelegate(uint casterId, Character* casterObj, Vector3* targetPos, ActionEffectHeader* header, ulong* effects, ulong* targets);
-    [Signature("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ??")]
-    private Hook<ProcessActionEffectPacketDelegate> _processActionEffectPacketHook = null!;
+    private Hook<ActionEffectHandler.Delegates.Receive> _processActionEffectPacketHook = null!;
 
     private delegate void StartCastDelegate(Character* self, ActionType actionType, uint actionId, ushort* intPos, float rot, float castTime);
-    [Signature("E8 ?? ?? ?? ?? 80 7E 22 11")]
     private Hook<StartCastDelegate> _startCastHook = null!;
 
     public GameEvents()
     {
         Service.Hook.InitializeFromAttributes(this);
+        _processActionEffectPacketHook = Service.Hook.HookFromAddress<ActionEffectHandler.Delegates.Receive>((nint)ActionEffectHandler.MemberFunctionPointers.Receive, ProcessActionEffectPacketDetour);
+        _processActionEffectPacketHook.Enable();
+
+        _startCastHook = Service.Hook.HookFromSignature<StartCastDelegate>("E8 ?? ?? ?? ?? 80 7E 22 11", StartCastDetour);
+		_startCastHook.Enable();
         Service.Log.Information($"_processActionEffectPacketHook: 0x{_processActionEffectPacketHook.Address:X}");
         Service.Log.Information($"_startCastHook: 0x{_startCastHook.Address:X}");
-
-        _processActionEffectPacketHook.Enable();
-        _startCastHook.Enable();
     }
 
     public void Dispose()
@@ -61,11 +62,11 @@ public unsafe class GameEvents : IDisposable
         _startCastHook.Dispose();
     }
 
-    private void ProcessActionEffectPacketDetour(uint casterId, Character* casterObj, Vector3* targetPos, ActionEffectHeader* header, ulong* effects, ulong* targets)
+    private void ProcessActionEffectPacketDetour(uint casterEntityId, Character* casterPtr, Vector3* targetPos, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects, GameObjectId* targetEntityIds)
     {
-        _processActionEffectPacketHook.Original(casterId, casterObj, targetPos, header, effects, targets);
-        if (header->actionType == ActionType.Action)
-            ActionEffectEvent?.Invoke(header->actionId, casterObj->GameObject.Position);
+        _processActionEffectPacketHook.Original(casterEntityId, casterPtr, targetPos, header, effects, targetEntityIds);
+        if (header->ActionType == (byte)ActionType.Action)
+            ActionEffectEvent?.Invoke(header->ActionType, casterPtr->GameObject.Position);
     }
 
     private void StartCastDetour(Character* self, ActionType actionType, uint actionId, ushort* intPos, float rot, float castTime)
