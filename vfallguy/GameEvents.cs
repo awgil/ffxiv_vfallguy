@@ -66,7 +66,7 @@ public unsafe class GameEvents : IDisposable
     {
         _processActionEffectPacketHook.Original(casterEntityId, casterPtr, targetPos, header, effects, targetEntityIds);
         if (header->ActionType == (byte)ActionType.Action)
-            ActionEffectEvent?.Invoke(header->ActionType, casterPtr->GameObject.Position);
+            ActionEffectEvent?.Invoke(header->ActionId, casterPtr->GameObject.Position);
     }
 
     private void StartCastDetour(Character* self, ActionType actionType, uint actionId, ushort* intPos, float rot, float castTime)
