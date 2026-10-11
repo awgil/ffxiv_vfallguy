@@ -5,6 +5,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 
 namespace vfallguy;
@@ -68,7 +69,9 @@ public class MainWindow : Window, IDisposable
 
     public unsafe override void Draw()
     {
-        if (ImGui.Button("Queue"))
+        WindowName = $"vfailguy - {GetMgf()} mgf";
+
+		if (ImGui.Button("Queue"))
             _automation.RegisterForDuty();
         ImGui.SameLine();
         if (ImGui.Button("Leave"))
@@ -235,4 +238,14 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
+
+    private DateTime? _lastCheck;
+
+    private int _mgf;
+    private unsafe int GetMgf() {
+        if (_lastCheck != null && (DateTime.Now - _lastCheck.Value).Seconds < 5) return _mgf;
+		_mgf = CurrencyManager.Instance()->ItemBucket.First(i => i.Key is 41629).Value.Count;
+		_lastCheck = DateTime.Now;
+        return _mgf;
+	}
 }
